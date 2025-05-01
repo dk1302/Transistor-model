@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 torch.manual_seed(42)
 
 ## 1. Custom Dataset Class for 102x102 Coordinates
-class XYCoordinatesDataset(Dataset):
+class CoordinatesDataset(Dataset):
     def __init__(self, parameters_file, coordinates_file):
         # Load parameters
         self.parameters = pd.read_csv(parameters_file).values.astype(np.float32)
@@ -39,7 +39,7 @@ class XYCoordinatesDataset(Dataset):
         return self.coords_scaler.inverse_transform(coordinates)
 
 ## 2. Load Your Custom Dataset
-dataset = XYCoordinatesDataset(
+dataset = CoordinatesDataset(
     parameters_file='params.csv',
     coordinates_file='features.csv',
 )
