@@ -304,7 +304,15 @@ if __name__ == "__main__":
     )
     
     # Train and evaluate
-    trainer.train(train_loader, val_loader, epochs=250)
+    trainer.train(train_loader, val_loader, epochs=285)
     
     # Plot training history
     trainer.plot_history()
+
+    # Alternatively, save just the state_dict (recommended)
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': criterion,
+        # Add any other training info you want to save
+    }, '1d_cnn_checkpoint.pth')
