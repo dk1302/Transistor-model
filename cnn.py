@@ -1,10 +1,11 @@
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data import Dataset
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
+from scipy.interpolate import interp1d
 
 # Set random seed for reproducibility
 torch.manual_seed(42)
@@ -19,11 +20,11 @@ class CoordinatesDataset(Dataset):
         self.coords = pd.read_csv(coordinates_file).values.astype(np.float32)  # First 102 columns are x
         
         # Normalize parameters
-        self.param_scaler = StandardScaler()
+        self.param_scaler = MinMaxScaler()
         self.parameters = self.param_scaler.fit_transform(self.parameters)
         
         # Normalize coordinates separately
-        self.coords_scaler = StandardScaler()
+        self.coords_scaler = MinMaxScaler()
         self.coords = self.coords_scaler.fit_transform(self.coords)
         
     def __len__(self):
@@ -38,26 +39,26 @@ class CoordinatesDataset(Dataset):
         """Convert normalized coordinates back to original scale"""
         return self.coords_scaler.inverse_transform(coordinates)
 
-## 2. Load Your Custom Dataset
-dataset = CoordinatesDataset(
-    parameters_file='params.csv',
-    coordinates_file='features.csv',
+dataset_v1 = CoordinatesDataset(
+    parameters_file='new_params.csv',
+    coordinates_file='new_features_v1.csv'
 )
 
-# Split dataset
-train_size = int(0.8 * len(dataset))
-val_size = len(dataset) - train_size
-train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+dataset_v5 = CoordinatesDataset(
+    parameters_file='new_params.csv',
+    coordinates_file='new_features_v5.csv'
+)
 
-# Create DataLoaders
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+dataset_v10 = CoordinatesDataset(
+    parameters_file='new_params.csv',
+    coordinates_file='new_features_v10.csv'
+)
 
-class EnhancedResidualBlock(nn.Module):
+class ResidualBlock(nn.Module):
     """Residual block with additional hidden layer"""
     def __init__(self, in_channels, out_channels, stride=1, 
                  dropout_rate=0.2, use_batchnorm=True):
-        super(EnhancedResidualBlock, self).__init__()
+        super(ResidualBlock, self).__init__()
         
         # Main convolutional path with additional hidden layer
         self.conv_path = nn.Sequential(
@@ -96,10 +97,10 @@ class EnhancedResidualBlock(nn.Module):
         return out
 
 
-class SelfAttention1D(nn.Module):
-    """Self-attention mechanism for 1D data"""
+class SelfAttention(nn.Module):
+    """Self-attention mechanism"""
     def __init__(self, channel_size):
-        super(SelfAttention1D, self).__init__()
+        super(SelfAttention, self).__init__()
         
         self.query = nn.Conv1d(channel_size, channel_size // 8, 1)
         self.key = nn.Conv1d(channel_size, channel_size // 8, 1)
@@ -126,11 +127,11 @@ class SelfAttention1D(nn.Module):
         # Add skip connection
         return self.gamma * out + x
 
-class ComplexCNN1D(nn.Module):
+class CNN(nn.Module):
     def __init__(self, input = 1, output = 202, dropout_rate=0.5, use_batchnorm=True, 
                  use_residual=True, use_attention=True, 
                  hidden_channels=128):
-        super(ComplexCNN1D, self).__init__()
+        super(CNN, self).__init__()
         
         self.use_residual = use_residual
         self.use_attention = use_attention
@@ -148,17 +149,17 @@ class ComplexCNN1D(nn.Module):
         )
         
         # Residual blocks with additional hidden layers
-        self.res_block1 = EnhancedResidualBlock(hidden_channels, 256, stride=2, 
+        self.res_block1 = ResidualBlock(hidden_channels, 256, stride=2, 
                                              dropout_rate=dropout_rate,
                                              use_batchnorm=use_batchnorm)
         
-        self.res_block2 = EnhancedResidualBlock(256, 512, stride=2,
+        self.res_block2 = ResidualBlock(256, 512, stride=2,
                                               dropout_rate=dropout_rate,
                                               use_batchnorm=use_batchnorm)
         
         # Attention mechanism
         if use_attention:
-            self.attention = SelfAttention1D(512)
+            self.attention = SelfAttention(512)
         
         # Additional convolutional blocks with more hidden layers
         self.conv_block2 = nn.Sequential(
@@ -220,7 +221,7 @@ class ModelTrainer:
     def reset_history(self):
         self.history = {
             'train_loss': [],
-            'val_loss': [],
+            'val_loss': []
         }
     
     def training(self, dataloader, device='cpu'):
@@ -230,11 +231,11 @@ class ModelTrainer:
             inputs = inputs.to(device)
             labels = labels.to(device)
 
-            optimizer.zero_grad()
+            self.optimizer.zero_grad()
             outputs = self.model(inputs)
-            loss = criterion(outputs, labels)
+            loss = self.criterion(outputs, labels)
             loss.backward()    # Scale the gradients
-            optimizer.step()          # Update the model parameters
+            self.optimizer.step()          # Update the model parameters
 
             running_loss += loss.item() * inputs.size(0)
 
@@ -251,11 +252,12 @@ class ModelTrainer:
         with torch.no_grad():
             for data in dataloader:
                 params, labels = data
-                params = params.to(device)
-                labels = labels.to(device)
+                params = params.to(self.device)
+                labels = labels.to(self.device)
 
-                outputs = model(params)
-                val_loss += criterion(outputs, labels).item() * labels.size(0)
+                outputs = self.model(params)
+
+                val_loss += self.criterion(outputs, labels).item() * labels.size(0)
 
         # Calculate the validation accuracy and validation loss
         val_loss /= len(dataloader.dataset)
@@ -286,33 +288,86 @@ class ModelTrainer:
         
         plt.show()
 
+class use_model:
+    def __init__(self, params_path, index=0, device='cuda' if torch.cuda.is_available() else 'cpu'):
+        self.device = device
+        self.index = index
 
-# Example usage:
-if __name__ == "__main__":
-    # Initialize your model, optimizer, criterion
-    model = ComplexCNN1D(input=1, output=202)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.00005)
-    criterion = nn.MSELoss()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    
-    # Create trainer
-    trainer = ModelTrainer(
-        model=model.to(device),
-        optimizer=optimizer,
-        criterion=criterion,
-        device=device,
-    )
-    
-    # Train and evaluate
-    trainer.train(train_loader, val_loader, epochs=285)
-    
-    # Plot training history
-    trainer.plot_history()
+        self.input_data = pd.read_csv(params_path).values.astype(np.float32)
 
-    # Alternatively, save just the state_dict (recommended)
-    torch.save({
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'loss': criterion,
-        # Add any other training info you want to save
-    }, '1d_cnn_checkpoint.pth')
+        self.outputs = 0
+        self.x_axis = np.empty(97)
+        self.x_axis[1] = 0.5
+        for x in range(95):
+            self.x_axis[x+2] = self.x_axis[x+1]+0.1
+    
+    def run(self, model_path, v=1):
+        # Load dataset based on CG1 Voltage
+        if(v == 1):
+            dataset = dataset_v1
+        elif(v == 5):
+            dataset = dataset_v5
+        elif(v == 10):
+            dataset = dataset_v10
+
+        input_data = dataset.param_scaler.transform(self.input_data)
+
+        sample = input_data[self.index]
+        sample = sample[np.newaxis, :]
+
+        model = torch.load(model_path, weights_only=False)
+        model.eval()  # Set model to evaluation mode
+        model.to(self.device)
+
+        # Ensure input is a tensor and add batch dimension if needed
+        if not isinstance(sample, torch.Tensor):
+            sample = torch.tensor(sample, dtype=torch.float32)
+
+        if sample.dim() == 2:  # If single sample (channels, length)
+            sample = sample.unsqueeze(0)  # Add batch dimension
+
+        sample = sample.to(self.device)
+
+        with torch.no_grad():  # Disable gradient calculation
+            outputs = model(sample)
+
+        # Convert normalized coordinates back to original scale
+        if len(outputs) == 1:
+            output = outputs.numpy()
+            output = dataset.inverse_transform(output)
+            output = output.flatten()
+
+            # Removes outlier values
+            output = np.insert(output, 0, 0.0)
+            for x in range(5):
+                output = np.delete(output, 1)
+
+            self.plot_prediction(self.x_axis, output)
+        else:
+            for i in range(len(outputs)):
+                output = outputs[i].numpy()
+                output = dataset.inverse_transform(output)
+                output = output.flatten()
+
+                output = np.insert(output, 0, 0.0)
+                for x in range(5):
+                    output = np.delete(output, 1)
+
+                self.plot_prediction(self.x_axis, output)
+        
+    def plot_prediction(self, x_axis, outputs):
+        plt.figure(figsize=(12, 5))
+
+        #Makes graph smoother
+        cubic_interpolation_model = interp1d(x_axis, outputs, kind = "cubic")
+
+        x_axis = np.linspace(x_axis.min(), x_axis.max(), 10)
+
+        y_axis = cubic_interpolation_model(x_axis)
+                
+        # Loss plot
+        plt.plot(x_axis, y_axis)
+        plt.title('Surrogate Model')
+        plt.xlabel('Drain Voltage (V)')
+        plt.ylabel('Drain Current (A)') 
+        plt.show()
