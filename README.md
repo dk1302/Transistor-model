@@ -9,9 +9,11 @@ Use train.py to train the model and test.py to run. Pre-trained models are provi
 A parameter set can be chosen with the index variable
 
 ```
-model = cnn.use_model('datasets/val.csv', index=2)
+index = 66
+plot.plot(index)
+model = cnn.use_model('datasets/val.csv', index=index)
 
 ```
 
 The index variable corresponds to a list of val parameters and output coordinates found in the dataset directory
-(index starts at 0)
+(index starts at 0, ends at 72)
