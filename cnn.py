@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from scipy.interpolate import interp1d
+from scipy.ndimage.filters import gaussian_filter1d
 
 # Set random seed for reproducibility
 torch.manual_seed(42)
@@ -40,18 +41,31 @@ class CoordinatesDataset(Dataset):
         return self.coords_scaler.inverse_transform(coordinates)
 
 dataset_v1 = CoordinatesDataset(
-    parameters_file='new_params.csv',
-    coordinates_file='new_features_v1.csv'
+    parameters_file='datasets/new_params.csv',
+    coordinates_file='datasets/new_features_v1.csv'
 )
 
 dataset_v5 = CoordinatesDataset(
-    parameters_file='new_params.csv',
-    coordinates_file='new_features_v5.csv'
+    parameters_file='datasets/new_params.csv',
+    coordinates_file='datasets/new_features_v5.csv'
 )
 
 dataset_v10 = CoordinatesDataset(
-    parameters_file='new_params.csv',
-    coordinates_file='new_features_v10.csv'
+    parameters_file='datasets/new_params.csv',
+    coordinates_file='datasets/new_features_v10.csv'
+)
+
+scale_v1_dataset = CoordinatesDataset(
+    parameters_file='datasets/new_params.csv',
+    coordinates_file='datasets/scale_v1.csv'
+)
+scale_v5_dataset = CoordinatesDataset(
+    parameters_file='datasets/new_params.csv',
+    coordinates_file='datasets/scale_v5.csv'
+)
+scale_v10_dataset = CoordinatesDataset(
+    parameters_file='datasets/new_params.csv',
+    coordinates_file='datasets/scale_v10.csv'
 )
 
 class ResidualBlock(nn.Module):
@@ -295,20 +309,22 @@ class use_model:
 
         self.input_data = pd.read_csv(params_path).values.astype(np.float32)
 
-        self.outputs = 0
         self.x_axis = np.empty(97)
         self.x_axis[1] = 0.5
         for x in range(95):
             self.x_axis[x+2] = self.x_axis[x+1]+0.1
     
-    def run(self, model_path, v=1):
+    def run(self, model_path, scale_path, v=1):
         # Load dataset based on CG1 Voltage
         if(v == 1):
             dataset = dataset_v1
+            scale_dataset = scale_v1_dataset
         elif(v == 5):
             dataset = dataset_v5
+            scale_dataset = scale_v5_dataset
         elif(v == 10):
             dataset = dataset_v10
+            scale_dataset = scale_v10_dataset
 
         input_data = dataset.param_scaler.transform(self.input_data)
 
@@ -318,6 +334,9 @@ class use_model:
         model = torch.load(model_path, weights_only=False)
         model.eval()  # Set model to evaluation mode
         model.to(self.device)
+        scale = torch.load(scale_path, weights_only=False)
+        scale.eval()  # Set model to evaluation mode
+        scale.to(self.device)
 
         # Ensure input is a tensor and add batch dimension if needed
         if not isinstance(sample, torch.Tensor):
@@ -330,30 +349,34 @@ class use_model:
 
         with torch.no_grad():  # Disable gradient calculation
             outputs = model(sample)
+            scaleValues = scale(sample)
+        
+        scaleValue = scaleValues.numpy()
+        scaleValue = scale_dataset.inverse_transform(scaleValue)
+        scaleValue = scaleValue.flatten()
 
         # Convert normalized coordinates back to original scale
-        if len(outputs) == 1:
-            output = outputs.numpy()
-            output = dataset.inverse_transform(output)
-            output = output.flatten()
+        output = outputs.numpy()
+        output = dataset.inverse_transform(output)
+        output = output.flatten()
 
-            # Removes outlier values
-            output = np.insert(output, 0, 0.0)
-            for x in range(5):
-                output = np.delete(output, 1)
+        item = str(output[0])
+        reverse_scale = ''
+        scale = False
+        for char in item:
+            if(char == '-'):
+                scale=True
+                continue
+            if(scale):
+                reverse_scale += char
+        
+        reverse_scale = int(reverse_scale)
 
-            self.plot_prediction(self.x_axis, output)
-        else:
-            for i in range(len(outputs)):
-                output = outputs[i].numpy()
-                output = dataset.inverse_transform(output)
-                output = output.flatten()
+        output = output*10**reverse_scale
+        output = output*10**-scaleValue[0]
+        output = np.insert(output, 0, 0.0)
 
-                output = np.insert(output, 0, 0.0)
-                for x in range(5):
-                    output = np.delete(output, 1)
-
-                self.plot_prediction(self.x_axis, output)
+        self.plot_prediction(self.x_axis, output)
         
     def plot_prediction(self, x_axis, outputs):
         plt.figure(figsize=(12, 5))
@@ -361,7 +384,7 @@ class use_model:
         #Makes graph smoother
         cubic_interpolation_model = interp1d(x_axis, outputs, kind = "cubic")
 
-        x_axis = np.linspace(x_axis.min(), x_axis.max(), 10)
+        x_axis = np.linspace(x_axis.min(), x_axis.max(), 9)
 
         y_axis = cubic_interpolation_model(x_axis)
                 

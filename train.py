@@ -21,7 +21,7 @@ def train(model_path, params_path, features_path, epochs=170):
 
     if __name__ == "__main__":
         # Initialize your model, optimizer, criterion
-        model = cnn.CNN(input=1, output=101)
+        model = cnn.CNN(input=1, output=2)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.00005)
         criterion = nn.MSELoss()
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -42,7 +42,11 @@ def train(model_path, params_path, features_path, epochs=170):
 
         torch.save(model, model_path)
 
-train('cnn_model_v1.pth', 'new_params.csv', 'new_features_v1.csv')
-train('cnn_model_v5.pth', 'new_params.csv', 'new_features_v5.csv')
-train('cnn_model_v10.pth', 'new_params.csv', 'new_features_v10.csv')
+train('models/shape_v1.pth', 'datasets/new_params.csv', 'datasets/new_features_v1.csv', epochs=130)
+train('models/shape_v5.pth', 'datasets/new_params.csv', 'datasets/new_features_v5.csv', epochs=170)
+train('models/shape_v10.pth', 'datasets/new_params.csv', 'datasets/new_features_v10.csv', epochs=190)
+
+train('models/scale_v1.pth', 'datasets/new_params.csv', 'datasets/scale_v1.csv', epochs=130)
+train('models/scale_v5.pth', 'datasets/new_params.csv', 'datasets/scale_v5.csv', epochs=170)
+train('models/scale_v10.pth', 'datasets/new_params.csv', 'datasets/scale_v10.csv', epochs=190)
 
