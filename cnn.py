@@ -6,7 +6,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from scipy.interpolate import interp1d
-from scipy.ndimage.filters import gaussian_filter1d
 
 # Set random seed for reproducibility
 torch.manual_seed(42)
@@ -379,7 +378,7 @@ class use_model:
         self.plot_prediction(self.x_axis, output)
         
     def plot_prediction(self, x_axis, outputs):
-        plt.figure(figsize=(12, 5))
+        plt.figure(figsize=(9, 5))
 
         #Makes graph smoother
         cubic_interpolation_model = interp1d(x_axis, outputs, kind = "cubic")

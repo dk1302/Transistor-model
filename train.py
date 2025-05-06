@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader, random_split
 import torch
 import torch.nn as nn
 
-def train(model_path, params_path, features_path, epochs=170):
+def train(model_path, params_path, features_path, epochs=170, size=96):
 
     dataset = cnn.CoordinatesDataset(
         parameters_file=params_path,
@@ -21,7 +21,7 @@ def train(model_path, params_path, features_path, epochs=170):
 
     if __name__ == "__main__":
         # Initialize your model, optimizer, criterion
-        model = cnn.CNN(input=1, output=2)
+        model = cnn.CNN(input=1, output=size)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.00005)
         criterion = nn.MSELoss()
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -46,7 +46,7 @@ train('models/shape_v1.pth', 'datasets/new_params.csv', 'datasets/new_features_v
 train('models/shape_v5.pth', 'datasets/new_params.csv', 'datasets/new_features_v5.csv', epochs=170)
 train('models/shape_v10.pth', 'datasets/new_params.csv', 'datasets/new_features_v10.csv', epochs=190)
 
-train('models/scale_v1.pth', 'datasets/new_params.csv', 'datasets/scale_v1.csv', epochs=130)
-train('models/scale_v5.pth', 'datasets/new_params.csv', 'datasets/scale_v5.csv', epochs=170)
-train('models/scale_v10.pth', 'datasets/new_params.csv', 'datasets/scale_v10.csv', epochs=190)
+train('models/scale_v1.pth', 'datasets/new_params.csv', 'datasets/scale_v1.csv', epochs=130, size=2)
+train('models/scale_v5.pth', 'datasets/new_params.csv', 'datasets/scale_v5.csv', epochs=170, size=2)
+train('models/scale_v10.pth', 'datasets/new_params.csv', 'datasets/scale_v10.csv', epochs=190, size=2)
 
