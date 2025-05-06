@@ -3,7 +3,7 @@ import cnn
 import plot
 
 if __name__ == "__main__":
-    index = 2
+    index = 35
     plot.plot(index)
     model = cnn.use_model('datasets/val.csv', index=index)
     model.run('models/shape_v1.pth', 'models/scale_v1.pth', v=1)
