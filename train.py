@@ -40,13 +40,18 @@ def train(model_path, params_path, features_path, epochs=170, size=96):
         # Plot training history
         trainer.plot_history()
 
-        torch.save(model, model_path)
+        torch.save({
+            'model_state_dict': model.state_dict(),
+            'train_loss': trainer.history['train_loss'],
+            'val_loss': trainer.history['val_loss'],
+            # Add any other training info you want to save
+        }, model_path)
 
-train('models/shape_v1.pth', 'datasets/new_params.csv', 'datasets/new_features_v1.csv', epochs=130)
-train('models/shape_v5.pth', 'datasets/new_params.csv', 'datasets/new_features_v5.csv', epochs=170)
-train('models/shape_v10.pth', 'datasets/new_params.csv', 'datasets/new_features_v10.csv', epochs=190)
+train('models/new_shape_v1.pth', 'datasets/new_params.csv', 'datasets/new_features_v1.csv', epochs=130)
+train('models/new_shape_v5.pth', 'datasets/new_params.csv', 'datasets/new_features_v5.csv', epochs=170)
+train('models/new_shape_v10.pth', 'datasets/new_params.csv', 'datasets/new_features_v10.csv', epochs=190)
 
-train('models/scale_v1.pth', 'datasets/new_params.csv', 'datasets/scale_v1.csv', epochs=130, size=2)
-train('models/scale_v5.pth', 'datasets/new_params.csv', 'datasets/scale_v5.csv', epochs=170, size=2)
-train('models/scale_v10.pth', 'datasets/new_params.csv', 'datasets/scale_v10.csv', epochs=190, size=2)
+train('models/new_scale_v1.pth', 'datasets/new_params.csv', 'datasets/scale_v1.csv', epochs=400, size=2)
+train('models/new_scale_v5.pth', 'datasets/new_params.csv', 'datasets/scale_v5.csv', epochs=400, size=2)
+train('models/new_scale_v10.pth', 'datasets/new_params.csv', 'datasets/scale_v10.csv', epochs=400, size=2)
 

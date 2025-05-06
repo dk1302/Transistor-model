@@ -237,12 +237,12 @@ class ModelTrainer:
             'val_loss': []
         }
     
-    def training(self, dataloader, device='cpu'):
+    def training(self, dataloader):
         self.model.train()  # Set model to training mode
         running_loss = 0.0
         for i, (inputs, labels) in enumerate(dataloader):
-            inputs = inputs.to(device)
-            labels = labels.to(device)
+            inputs = inputs.to(self.device)
+            labels = labels.to(self.device)
 
             self.optimizer.zero_grad()
             outputs = self.model(inputs)
@@ -330,10 +330,15 @@ class use_model:
         sample = input_data[self.index]
         sample = sample[np.newaxis, :]
 
-        model = torch.load(model_path, weights_only=False)
+        checkpoint = torch.load(model_path, weights_only=False)
+        model = CNN(input=1, output=96)
+        model.load_state_dict(checkpoint['model_state_dict'])  # Load model state dictionary from checkpoint['model_state_dict']
         model.eval()  # Set model to evaluation mode
         model.to(self.device)
-        scale = torch.load(scale_path, weights_only=False)
+
+        scale_checkpoint = torch.load(scale_path, weights_only=False)
+        scale = CNN(input=1, output=2)
+        scale.load_state_dict(scale_checkpoint['model_state_dict'])
         scale.eval()  # Set model to evaluation mode
         scale.to(self.device)
 
@@ -376,6 +381,16 @@ class use_model:
         output = np.insert(output, 0, 0.0)
 
         self.plot_prediction(self.x_axis, output)
+
+        plt.figure(figsize=(12, 5))
+
+        plt.plot(checkpoint['train_loss'], label='Train Loss')
+        plt.plot(checkpoint['val_loss'], label='Val Loss')
+        plt.title('Training and Validation Loss')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.show()
         
     def plot_prediction(self, x_axis, outputs):
         plt.figure(figsize=(9, 5))
