@@ -10,14 +10,14 @@ from scipy.interpolate import interp1d
 # Set random seed for reproducibility
 torch.manual_seed(42)
 
-## 1. Custom Dataset Class for 102x102 Coordinates
+## 1. Custom Dataset Class for Coordinates Processing
 class CoordinatesDataset(Dataset):
     def __init__(self, parameters_file, coordinates_file):
         # Load parameters
         self.parameters = pd.read_csv(parameters_file).values.astype(np.float32)
         
         # Load coordinates and separate x and y
-        self.coords = pd.read_csv(coordinates_file).values.astype(np.float32)  # First 102 columns are x
+        self.coords = pd.read_csv(coordinates_file).values.astype(np.float32)  
         
         # Normalize parameters
         self.param_scaler = MinMaxScaler()
@@ -339,7 +339,7 @@ class use_model:
         scale_checkpoint = torch.load(scale_path, weights_only=False)
         scale = CNN(input=1, output=2)
         scale.load_state_dict(scale_checkpoint['model_state_dict'])
-        scale.eval()  # Set model to evaluation mode
+        scale.eval()  
         scale.to(self.device)
 
         # Ensure input is a tensor and add batch dimension if needed
@@ -376,6 +376,7 @@ class use_model:
         
         reverse_scale = int(reverse_scale)
 
+        # Scale with value from scale model
         output = output*10**reverse_scale
         output = output*10**-scaleValue[0]
         output = np.insert(output, 0, 0.0)
