@@ -6,7 +6,7 @@
 
 Use train.py to train the model and test.py to run. Pre-trained models are provided in the models directory.
 
-A parameter set can be chosen with the index variable
+A parameter set can be chosen for testing with the index variable
 
 ```
 index = 66
